@@ -130,9 +130,9 @@ def generate_level(level):
 
 
 def game():
-    start_screen()
+    player, level_x, level_y = generate_level(load_level(input("введите уровень")))
 
-    player, level_x, level_y = generate_level(load_level('map.txt'))
+    start_screen()
 
     while True:
         for event in pygame.event.get():
