@@ -86,7 +86,26 @@ class Tile(pygame.sprite.Sprite):
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
-
+    
+    def move(self, left, right, up, down, level_x, level_y):
+        if left:
+            self.rect.x -= tile_width
+            if self.rect.x < 0:
+                self.rect.x += tile_width * (level_x - 1)
+                print('moved')
+        if right:
+            self.rect.x += tile_width
+            if self.rect.x > tile_width * (level_x):
+                self.rect.x = 0
+        if up:
+            self.rect.y -= tile_height
+            if self.rect.y < 0:
+                self.rect.y += tile_height * (level_y - 1)
+        if down:
+            self.rect.y += tile_height
+            if self.rect.y > tile_height * (level_y):
+                self.rect.y = 0
+    
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
@@ -95,27 +114,34 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
     
-    def move(self, left, right, up, down):
+    def can_move(self, left, right, up, down):
+        res = False
         if left:
-            self.rect.x -= tile_width
-            if pygame.sprite.spritecollideany(self, tiles_group).tile_type == 'wall':
-                self.rect.x += tile_width
-        if right:
             self.rect.x += tile_width
-            if pygame.sprite.spritecollideany(self, tiles_group).tile_type == 'wall':
-                self.rect.x -= tile_width
+            if pygame.sprite.spritecollideany(self, tiles_group).tile_type != 'wall':
+                res = True
+            self.rect.x -= tile_width
+        if right:
+            self.rect.x -= tile_width
+            if pygame.sprite.spritecollideany(self, tiles_group).tile_type != 'wall':
+                res = True
+            self.rect.x += tile_width
         if up:
-            self.rect.y -= tile_height
-            if pygame.sprite.spritecollideany(self, tiles_group).tile_type == 'wall':
-                self.rect.y += tile_width
-        if down:
             self.rect.y += tile_height
-            if pygame.sprite.spritecollideany(self, tiles_group).tile_type == 'wall':
-                self.rect.y -= tile_width
-            
+            if pygame.sprite.spritecollideany(self, tiles_group).tile_type != 'wall':
+                res = True
+            self.rect.y -= tile_width
+        if down:
+            self.rect.y -= tile_height
+            if pygame.sprite.spritecollideany(self, tiles_group).tile_type != 'wall':
+                res = True
+            self.rect.y += tile_width
+        
+        return res
 
 def generate_level(level):
     new_player, x, y = None, None, None
+    # level_map = [[None for i in range(len(level[j]))] for j in range(level)]
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
@@ -129,26 +155,13 @@ def generate_level(level):
     return new_player, x, y
 
 
-class Camera:
-    # зададим начальный сдвиг камеры
-    def __init__(self):
-        self.dx = 0
-        self.dy = 0
-        
-    # сдвинуть объект obj на смещение камеры
-    def apply(self, obj):
-        obj.rect.x += self.dx
-        obj.rect.y += self.dy
-    
-    # позиционировать камеру на объекте target
-    def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
-        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
+def move(left, right, up, down, level_x, level_y):
+    for tile in tiles_group:
+        tile.move(left, right, up, down, level_x, level_y)
 
 
 def game():
     player, level_x, level_y = generate_level(load_level("level_1.txt"))
-    camera = Camera()
 
     start_screen()
 
@@ -158,19 +171,19 @@ def game():
                 terminate()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    player.move(1, 0, 0, 0)
+                    if player.can_move(1, 0, 0, 0):
+                        print('can_move')
+                        move(1, 0, 0, 0, level_x, level_y)
                 elif event.key == pygame.K_UP:
-                    player.move(0, 0, 1, 0)
+                    if player.can_move(0, 0, 1, 0):
+                        print('can_move')
+                        move(0, 0, 1, 0, level_x, level_y)
                 elif event.key == pygame.K_DOWN:
-                    player.move(0, 0, 0, 1)
+                    if player.can_move(0, 0, 0, 1):
+                        move(0, 0, 0, 1, level_x, level_y)
                 elif event.key == pygame.K_RIGHT:
-                    player.move(0, 1, 0, 0)
-
-        # изменяем ракурс камеры
-        camera.update(player); 
-        # обновляем положение всех спрайтов
-        for sprite in all_sprites:
-            camera.apply(sprite)
+                    if player.can_move(0, 1, 0, 0):
+                        move(0, 1, 0, 0, level_x, level_y)
 
         pygame.display.flip()
         screen.fill((0, 0, 0))
